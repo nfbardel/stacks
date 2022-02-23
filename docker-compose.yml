@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+
+  campaign-app:
+    build:
+      args:
+        user: ${USER}
+        uid: 1000
+      context: ./
+      dockerfile: build/php/Dockerfile
+    image: campaign-app-i
+    container_name: campaign-app
+    restart: "no"
+    working_dir: /var/www/
+    volumes:
+      - ./:/var/www
+      - ./build/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - voterapp-net
+    depends_on:
+      - mongo_campaign
+    environment:
+      - PHP_IDE_CONFIG=serverName=docker-server
+
+  mongo_campaign:
+    image: mongo:5.0.3
+    container_name: mongo_campaign
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: rootpass
+    volumes:
+      - mongo_campaign_volume:/data/db
+    ports:
+      - 27021:27017
+    networks:
+      - voterapp-net
+  
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    restart: "no"
+    ports:
+      - 7070:80
+    volumes:
+      - ./:/var/www
+      - ./build/nginx/conf.d:/etc/nginx/conf.d
+    networks:
+      - voterapp-net
+    depends_on:
+      - campaign-app
+
+networks:
+  voterapp-net:
+    driver: bridge
+
+volumes:
+  mongo_campaign_volume:
