@@ -1,0 +1,89 @@
+# Require stack variable MYSQL_ROOT_PWD=PezGQE1lgvOFKOfv
+version: '3.1'
+
+services:
+
+  mongo_campaign:
+    image: mongo:4.2
+    networks:
+      campaign-net:
+        aliases:
+          - mongodb_campaign
+    ports:
+      - 27030:27017
+    volumes:
+      - mongocampaignvolume:/data/db
+    container_name: mongo-campaign
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          memory: 1024m
+
+  db:
+    image: grupoagni/mysql:1.0.0
+    networks:
+      campaign-net:
+        aliases:
+          - mysql
+    ports:
+      - 3306:3306
+    volumes:
+      - ../../mysql/data:/var/lib/mysql
+    container_name: campaign-sql
+    environment:
+      - MYSQL_DATABASE=cs_vote
+      - MYSQL_USER=delphiuser
+      - MYSQL_PASSWORD=password123
+      - MYSQL_ROOT_PASSWORD=password123
+      - TZ=America/Argentina/Buenos_Aires
+      - LANG=es_AR.utf8
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          memory: 512m
+
+  campaign:
+    image: campaign-app/7.2
+    networks:
+      - campaign-net
+    ports:
+      - 80:80
+    volumes:
+      - ../../campaign:/var/www
+    container_name: campaign-app
+    environment:
+      - TZ=America/Argentina/Buenos_Aires
+      - SERVICE_PORTS=80
+      - LANG=es_AR.utf8
+      - PHP_IDE_CONFIG=serverName=docker
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          memory: 2048m
+
+  redis:
+    image: "redis:alpine"
+    command: redis-server --requirepass foobared
+    container_name: redis-campaign
+    ports:
+      - "6320:6379"
+    volumes:
+      - rediscampaignvolume:/var/lib/redis
+      - ./build/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    environment:
+      - REDIS_REPLICATION_MODE=master
+    networks:
+      - campaign-net
+
+networks:
+    campaign-net:
+      driver: bridge
+volumes:
+  mongocampaignvolume:
+  rediscampaignvolume:
